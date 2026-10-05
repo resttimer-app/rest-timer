@@ -59,6 +59,17 @@ struct RestAttributes: ActivityAttributes {
         var endDate: Date
         /// 何本目の区間か（1から）
         var count: Int
+
+        /// 次の区間（今の区間の終わりから始まる）
+        func next() -> Running {
+            let i = (index + 1) % segments.count
+            let seconds = segments[i]
+            return Running(
+                label: label, segments: segments, index: i, segmentSeconds: seconds,
+                startDate: endDate, endDate: endDate.addingTimeInterval(TimeInterval(seconds)),
+                count: count + 1
+            )
+        }
     }
 
     struct ContentState: Codable, Hashable {
@@ -172,7 +183,10 @@ final class RestEngine {
     static let shared = RestEngine()
 
     private var keepAlive: AVAudioPlayer?
-    private var beep: AVAudioPlayer?
+    /// 予約済みのビープ（音の再生の仕組みが、自分の時計で予約時刻ぴったりに鳴らす）
+    private var scheduled: [AVAudioPlayer] = []
+    private var pendingBeep: Date?
+    private var soundURL: URL?
     private var loop: Task<Void, Never>?
 
     private init() {
@@ -229,6 +243,7 @@ final class RestEngine {
         // 最初の区間: 古い表示をすべて片付けて、新しいライブアクティビティを作る。
         // インテントの実行中（return 前）に作らないと、バックグラウンドからは作れないことがある。
         let initial = state(first, Date())
+        if let end = initial.running?.endDate { scheduleBeep(at: end) }
         try await replaceActivity(initial)
 
         loop = Task { @MainActor [weak self] in
@@ -246,11 +261,11 @@ final class RestEngine {
                     }
                 }
                 if Task.isCancelled { break }
-                RestLog.add(String(format: "区間終了（%.1f秒遅れ）、鳴らす", -end.timeIntervalSinceNow))
-                self?.playBeep()
+                RestLog.add(String(format: "区間終了（アプリの起床は%.1f秒遅れ。音は予約済み）", -end.timeIntervalSinceNow))
 
                 index += 1
                 current = state(index, end)
+                if let next = current.running?.endDate { self?.scheduleBeep(at: next) }
                 do {
                     try await self?.setState(current)
                 } catch {
@@ -285,9 +300,22 @@ final class RestEngine {
         silent.play()
         keepAlive = silent
 
-        let sound = try AVAudioPlayer(contentsOf: url)
-        sound.prepareToPlay()
-        beep = sound
+        soundURL = url
+    }
+
+    /// date ちょうどに鳴るようにビープを予約する。アプリが目を覚ますのが遅れても、鳴る時刻はずれない。
+    private func scheduleBeep(at date: Date) {
+        guard let url = soundURL, let player = try? AVAudioPlayer(contentsOf: url) else {
+            RestLog.add("ビープを予約できない")
+            return
+        }
+        player.volume = 1
+        player.prepareToPlay()
+        let delay = max(date.timeIntervalSinceNow, 0)
+        player.play(atTime: player.deviceCurrentTime + delay)
+        scheduled = Array((scheduled + [player]).suffix(3))
+        pendingBeep = date
+        RestLog.add(String(format: "ビープ予約: %.1f秒後", delay))
     }
 
     func resumeKeepAlive() {
@@ -295,26 +323,20 @@ final class RestEngine {
         try? AVAudioSession.sharedInstance().setActive(true)
         if !keepAlive.isPlaying { keepAlive.play() }
         RestLog.add("無音ループ再開: \(keepAlive.isPlaying)")
-    }
-
-    private func playBeep() {
-        if let keepAlive, !keepAlive.isPlaying {
-            RestLog.add("無音ループが止まっていた")
-            keepAlive.play()
+        // 中断で予約が消えているので、まだ来ていないビープを予約し直す
+        if let pendingBeep, pendingBeep > Date() {
+            scheduleBeep(at: pendingBeep)
         }
-        guard let beep else { RestLog.add("ビープがない"); return }
-        beep.currentTime = 0
-        beep.volume = 1
-        beep.play()
     }
 
     private func stopSound() {
         loop?.cancel()
         loop = nil
         keepAlive?.stop()
-        beep?.stop()
+        scheduled.forEach { $0.stop() }
         keepAlive = nil
-        beep = nil
+        scheduled = []
+        pendingBeep = nil
         // ほかのアプリ（音楽）に、こちらの再生が終わったことを伝える
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -326,7 +348,7 @@ final class RestEngine {
         let all = Activity<RestAttributes>.activities
         let live = all.filter { $0.activityState == .active || $0.activityState == .stale }
         RestLog.add("表示更新: \(describe(state))／表示\(live.count)件（全\(all.count)件: \(all.map { "\($0.activityState)" }.joined(separator: ",")))")
-        let content = ActivityContent(state: state, staleDate: nil)
+        let content = ActivityContent(state: state, staleDate: state.running?.endDate)
         if live.isEmpty {
             try request(content)
             return
@@ -343,7 +365,7 @@ final class RestEngine {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         RestLog.add("表示を作り直し: \(describe(state))（古い表示\(all.count)件を消去）")
-        try request(ActivityContent(state: state, staleDate: nil))
+        try request(ActivityContent(state: state, staleDate: state.running?.endDate))
     }
 
     private func request(_ content: ActivityContent<RestAttributes.ContentState>) throws {

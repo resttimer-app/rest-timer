@@ -103,7 +103,7 @@ struct RestLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RestAttributes.self) { context in
             Group {
-                if let running = context.state.running {
+                if let running = shown(context) {
                     RunningView(running: running)
                 } else if let number = context.state.choosing,
                           context.state.presets.indices.contains(number - 1)
@@ -122,14 +122,14 @@ struct RestLiveActivity: Widget {
                         .font(.title2)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    if let running = context.state.running {
+                    if let running = shown(context) {
                         countdown(running)
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .frame(maxWidth: 110)
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if let running = context.state.running {
+                    if let running = shown(context) {
                         HStack {
                             SegmentsLine(running: running)
                             Spacer()
@@ -146,13 +146,13 @@ struct RestLiveActivity: Widget {
             } compactLeading: {
                 Image(systemName: "timer")
             } compactTrailing: {
-                if let running = context.state.running {
+                if let running = shown(context) {
                     countdown(running)
                         .frame(maxWidth: 44)
                 }
             } minimal: {
                 // 音楽など他のライブアクティビティと並ぶと、この小さい丸だけになる。ここにも残り時間を出す
-                if let running = context.state.running {
+                if let running = shown(context) {
                     countdown(running)
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
@@ -364,11 +364,17 @@ private struct RunningView: View {
     }
 }
 
-/// 終了時刻に向かって減っていく表示（時計アプリのタイマーと同じ方式。iPhone が自動で数字を進める）
+/// 今表示する区間。区間の終わり（staleDate）を過ぎると iPhone が isStale にして描き直すので、
+/// アプリからの更新が届く前でも次の区間を出せる。
+private func shown(_ context: ActivityViewContext<RestAttributes>) -> RestAttributes.Running? {
+    guard let running = context.state.running else { return nil }
+    return context.isStale || running.endDate <= Date() ? running.next() : running
+}
+
+/// 残り時間。0 で止まり、増えていくことはない（iPhone が自動で数字を減らす）
 private func countdown(_ running: RestAttributes.Running) -> some View {
-    Text(running.endDate, style: .timer)
+    Text(timerInterval: running.startDate...running.endDate, countsDown: true, showsHours: false)
         .monospacedDigit()
-        .multilineTextAlignment(.leading)
 }
 
 @main
