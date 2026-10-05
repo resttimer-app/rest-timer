@@ -1,0 +1,47 @@
+# GitHub の Mac で iOS の preview ビルドを作り、EAS に上げてインストール用リンクを出す。
+# EAS のクラウドビルド枠を使わない（eas build --local）。必要なシークレット: EXPO_TOKEN
+name: iOS build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # 本体とウィジェットの版番号を揃えて、毎回上げる（同じ番号だと iPhone が上書きしない）
+      - name: Set build number
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            app.expo.ios.buildNumber = String(100 + Number(process.env.GITHUB_RUN_NUMBER));
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2) + "\n");
+            console.log("buildNumber", app.expo.ios.buildNumber);
+          '
+
+      - name: Build
+        run: npx eas-cli@latest build --local --platform ios --profile preview --non-interactive --output ./RestTimer.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RestTimer-ipa
+          path: RestTimer.ipa
+
+      - name: Upload to EAS (install link)
+        run: |
+          npx eas-cli@latest upload --platform ios --build-path ./RestTimer.ipa --non-interactive | tee upload.txt
+          echo '### Install' >> "$GITHUB_STEP_SUMMARY"
+          grep -Eo 'https://expo\.dev/[^ ]+' upload.txt >> "$GITHUB_STEP_SUMMARY" || true

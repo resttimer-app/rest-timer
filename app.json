@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Rest Timer",
+    "slug": "rest-timer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "jp.resttimer.app",
+      "appleTeamId": "4XBBNH5J4W",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "NSSupportsLiveActivities": true
+      },
+      "buildNumber": "10"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "@bacons/apple-targets",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/rest.wav"
+          ]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "jp.resttimer.app.widget",
+                  "targetName": "widget"
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "e389defb-1d36-4f22-b070-841b4ebdd626"
+      }
+    },
+    "owner": "eastpatsn"
+  }
+}
