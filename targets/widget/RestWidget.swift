@@ -114,7 +114,7 @@ struct RestLiveActivity: Widget {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -157,49 +157,73 @@ struct RestLiveActivity: Widget {
     }
 }
 
-/// メニュー1段階目: プリセットを大きなボタンで2列×3段に並べる
+/// メニュー1段階目: プリセットを横幅いっぱいの2列×3段に並べる（閉じるボタンは右上の隅）
 private struct MenuView: View {
     let presets: [RestPreset]
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 2)
+    /// 2個ずつの行に分ける
+    private var rows: [[(Int, RestPreset)]] {
+        let items = Array(presets.enumerated()).map { ($0.offset, $0.element) }
+        return stride(from: 0, to: items.count, by: 2).map { Array(items[$0..<min($0 + 2, items.count)]) }
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
+        ZStack(alignment: .topTrailing) {
             if presets.isEmpty {
                 Text("アプリでプリセットを設定してください")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                LazyVGrid(columns: columns, spacing: 6) {
-                    ForEach(Array(presets.enumerated()), id: \.offset) { index, preset in
-                        Button(intent: ChoosePresetIntent(number: index + 1)) {
-                            HStack(spacing: 6) {
-                                Text("\(index + 1)")
-                                    .font(.system(size: 13, weight: .heavy))
-                                    .opacity(0.7)
-                                Text(preset.label)
-                                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                                Spacer(minLength: 0)
+                VStack(spacing: 6) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: 6) {
+                            ForEach(row, id: \.0) { index, preset in
+                                PresetButton(number: index + 1, preset: preset)
                             }
-                            .padding(.horizontal, 10)
-                            .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange))
-                            .foregroundStyle(.white)
+                            if row.count == 1 {
+                                Color.clear.frame(maxWidth: .infinity)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
             Button(intent: StopRestIntent()) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.secondary)
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Circle().fill(Color.black.opacity(0.55)))
             }
             .buttonStyle(.plain)
+            .offset(x: 6, y: -6)
         }
+    }
+}
+
+private struct PresetButton: View {
+    let number: Int
+    let preset: RestPreset
+
+    var body: some View {
+        Button(intent: ChoosePresetIntent(number: number)) {
+            HStack(spacing: 8) {
+                Text("\(number)")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .opacity(0.75)
+                Text(preset.label)
+                    .font(.system(size: preset.segments.count <= 2 ? 19 : 15, weight: .bold, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange))
+            .foregroundStyle(.white)
+        }
+        .buttonStyle(.plain)
     }
 }
 
