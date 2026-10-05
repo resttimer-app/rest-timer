@@ -157,8 +157,9 @@ struct RestLiveActivity: Widget {
     }
 }
 
-/// メニュー1段階目: プリセットを横幅いっぱいに3段ずつ並べ、2ページで切り替える（1〜3番 / 4〜6番）。
-/// ロック画面のライブアクティビティは高さ160ptまでなので、3段にして1段を約44ptにしている。
+/// メニュー1段階目: プリセットを横幅いっぱいに3段ずつ並べ、2ページを ◀ ▶ で切り替える（1〜3番 / 4〜6番）。
+/// ライブアクティビティはスワイプを受け付けないので、ボタンで切り替えて、横にスライドする動きを付けている。
+/// 高さは160ptまでなので、3段にして1段を約44ptにしている。
 private struct MenuView: View {
     let presets: [RestPreset]
     let page: Int
@@ -179,34 +180,39 @@ private struct MenuView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .id(current)
+                .transition(.push(from: current == 0 ? .leading : .trailing))
             }
             // 右端: 閉じる / ページ切り替え
-            VStack {
+            VStack(spacing: 6) {
                 Button(intent: StopRestIntent()) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 60, height: 60)
                         .background(Circle().fill(Color.black.opacity(0.55)))
                 }
                 .buttonStyle(.plain)
                 Spacer(minLength: 0)
                 if pageCount > 1 {
                     Button(intent: ShowRestMenuIntent(page: current == 0 ? 1 : 0)) {
-                        VStack(spacing: 0) {
-                            Image(systemName: current == 0 ? "chevron.down" : "chevron.up")
-                                .font(.system(size: 14, weight: .bold))
-                            Text(current == 0 ? "4〜6" : "1〜3")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 52)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.2)))
+                        Image(systemName: current == 0 ? "chevron.right" : "chevron.left")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 60, height: 52)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.2)))
                     }
                     .buttonStyle(.plain)
+                    HStack(spacing: 5) {
+                        ForEach(0..<pageCount, id: \.self) { i in
+                            Circle()
+                                .fill(i == current ? Color.white : Color.white.opacity(0.35))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
                 }
             }
-            .frame(width: 40)
+            .frame(width: 60)
         }
     }
 }
