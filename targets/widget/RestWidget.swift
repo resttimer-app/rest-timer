@@ -110,7 +110,7 @@ struct RestLiveActivity: Widget {
                 {
                     StartPointView(number: number, preset: context.state.presets[number - 1])
                 } else {
-                    MenuView(presets: context.state.presets)
+                    MenuView(presets: context.state.presets, page: context.state.page)
                 }
             }
             .padding(.horizontal, 12)
@@ -157,34 +157,56 @@ struct RestLiveActivity: Widget {
     }
 }
 
-/// メニュー1段階目: プリセットを横幅いっぱいの1列×6段に並べる（閉じるボタンは右上の隅）
-/// ロック画面のライブアクティビティは高さ160ptまでなので、1段あたり約22pt。
+/// メニュー1段階目: プリセットを横幅いっぱいに3段ずつ並べ、2ページで切り替える（1〜3番 / 4〜6番）。
+/// ロック画面のライブアクティビティは高さ160ptまでなので、3段にして1段を約44ptにしている。
 private struct MenuView: View {
     let presets: [RestPreset]
+    let page: Int
+
+    private var pageCount: Int { (presets.count + 2) / 3 }
+    private var current: Int { min(max(page, 0), max(pageCount - 1, 0)) }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        HStack(spacing: 8) {
             if presets.isEmpty {
                 Text("アプリでプリセットを設定してください")
                     .font(.headline)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 3) {
-                    ForEach(Array(presets.enumerated()), id: \.offset) { index, preset in
-                        PresetButton(number: index + 1, preset: preset)
+                VStack(spacing: 5) {
+                    ForEach(current * 3..<min(current * 3 + 3, presets.count), id: \.self) { index in
+                        PresetButton(number: index + 1, preset: presets[index])
                     }
                 }
                 .frame(maxWidth: .infinity)
             }
-            Button(intent: StopRestIntent()) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 20)
-                    .background(Circle().fill(Color.black.opacity(0.55)))
+            // 右端: 閉じる / ページ切り替え
+            VStack {
+                Button(intent: StopRestIntent()) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.black.opacity(0.55)))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 0)
+                if pageCount > 1 {
+                    Button(intent: ShowRestMenuIntent(page: current == 0 ? 1 : 0)) {
+                        VStack(spacing: 0) {
+                            Image(systemName: current == 0 ? "chevron.down" : "chevron.up")
+                                .font(.system(size: 14, weight: .bold))
+                            Text(current == 0 ? "4〜6" : "1〜3")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 52)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.2)))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .buttonStyle(.plain)
-            .offset(x: 4, y: -2)
+            .frame(width: 40)
         }
     }
 }
@@ -197,18 +219,18 @@ private struct PresetButton: View {
         Button(intent: ChoosePresetIntent(number: number)) {
             HStack(spacing: 10) {
                 Text("\(number)")
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .opacity(0.75)
-                    .frame(width: 14)
+                    .frame(width: 16)
                 Text(preset.label)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 22, maxHeight: 22)
-            .background(RoundedRectangle(cornerRadius: 7).fill(Color.orange))
+            .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
+            .background(RoundedRectangle(cornerRadius: 11).fill(Color.orange))
             .foregroundStyle(.white)
         }
         .buttonStyle(.plain)

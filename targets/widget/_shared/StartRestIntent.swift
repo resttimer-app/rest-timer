@@ -68,6 +68,8 @@ struct RestAttributes: ActivityAttributes {
         var running: Running?
         /// メニューの2段階目: どのプリセットの「どこから始めるか」を選んでいるか（1〜6）
         var choosing: Int? = nil
+        /// メニュー1段階目のページ（0: 1〜3番、1: 4〜6番）
+        var page: Int = 0
     }
 }
 
@@ -80,11 +82,18 @@ struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "休憩タイマーのメニューを出す"
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "ページ（0か1）", default: 0)
+    var page: Int
+
     init() {}
+
+    init(page: Int) {
+        self.page = page
+    }
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        try await RestEngine.shared.showMenu()
+        try await RestEngine.shared.showMenu(page: page)
         return .result()
     }
 }
@@ -180,9 +189,9 @@ final class RestEngine {
         }
     }
 
-    func showMenu() async throws {
+    func showMenu(page: Int = 0) async throws {
         stopSound()
-        try await setState(RestAttributes.ContentState(presets: PresetStore.all(), running: nil))
+        try await setState(RestAttributes.ContentState(presets: PresetStore.all(), running: nil, page: page))
     }
 
     func choose(presetNumber: Int) async throws {
