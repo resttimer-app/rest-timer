@@ -328,6 +328,13 @@ private struct RunningView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             SegmentsLine(running: running)
+            // 残り時間のバー（これも iPhone が自動で動かす）
+            ProgressView(timerInterval: running.startDate...running.endDate, countsDown: true) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            }
+            .tint(.orange)
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("残り")
@@ -357,9 +364,11 @@ private struct RunningView: View {
     }
 }
 
+/// 終了時刻に向かって減っていく表示（時計アプリのタイマーと同じ方式。iPhone が自動で数字を進める）
 private func countdown(_ running: RestAttributes.Running) -> some View {
-    Text(timerInterval: running.startDate...running.endDate, countsDown: true, showsHours: false)
+    Text(running.endDate, style: .timer)
         .monospacedDigit()
+        .multilineTextAlignment(.leading)
 }
 
 @main
