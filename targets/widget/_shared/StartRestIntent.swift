@@ -213,26 +213,29 @@ final class RestEngine {
         try startSound()
         RestLog.add("開始: \(preset.label)（\(startAt)番目の区間から）")
 
-        loop = Task { @MainActor [weak self] in
-            let first = min(max(startAt - 1, 0), preset.segments.count - 1)
-            var index = first
-            var start = Date()
-            while !Task.isCancelled {
-                let current = index % preset.segments.count
-                let seconds = preset.segments[current]
-                let end = start.addingTimeInterval(TimeInterval(seconds))
-                let running = RestAttributes.Running(
-                    label: preset.label, segments: preset.segments, index: current,
-                    segmentSeconds: seconds,
-                    startDate: start, endDate: end, count: index - first + 1
-                )
-                do {
-                    try await self?.setState(RestAttributes.ContentState(presets: presets, running: running))
-                    RestLog.add("表示更新: \(RestPreset.format(seconds))（\(index - first + 1)本目）")
-                } catch {
-                    RestLog.add("表示更新に失敗: \(error)")
-                }
+        let first = min(max(startAt - 1, 0), preset.segments.count - 1)
+        let state: @Sendable (Int, Date) -> RestAttributes.ContentState = { index, start in
+            let current = index % preset.segments.count
+            let seconds = preset.segments[current]
+            let running = RestAttributes.Running(
+                label: preset.label, segments: preset.segments, index: current,
+                segmentSeconds: seconds,
+                startDate: start, endDate: start.addingTimeInterval(TimeInterval(seconds)),
+                count: index - first + 1
+            )
+            return RestAttributes.ContentState(presets: presets, running: running)
+        }
 
+        // 最初の区間: 古い表示をすべて片付けて、新しいライブアクティビティを作る。
+        // インテントの実行中（return 前）に作らないと、バックグラウンドからは作れないことがある。
+        let initial = state(first, Date())
+        try await replaceActivity(initial)
+
+        loop = Task { @MainActor [weak self] in
+            var current = initial
+            var index = first
+            while !Task.isCancelled {
+                guard let end = current.running?.endDate else { break }
                 let wait = end.timeIntervalSinceNow
                 if wait > 0 {
                     do {
@@ -243,11 +246,16 @@ final class RestEngine {
                     }
                 }
                 if Task.isCancelled { break }
-                let late = -end.timeIntervalSinceNow
-                RestLog.add(String(format: "区間終了（%.1f秒遅れ）、鳴らす", late))
+                RestLog.add(String(format: "区間終了（%.1f秒遅れ）、鳴らす", -end.timeIntervalSinceNow))
                 self?.playBeep()
+
                 index += 1
-                start = end
+                current = state(index, end)
+                do {
+                    try await self?.setState(current)
+                } catch {
+                    RestLog.add("表示更新に失敗: \(error)")
+                }
             }
         }
     }
@@ -313,14 +321,41 @@ final class RestEngine {
 
     // MARK: ライブアクティビティ
 
+    /// 表示中のライブアクティビティ（終わっていないもの）すべてを更新する。なければ作る。
     private func setState(_ state: RestAttributes.ContentState) async throws {
+        let all = Activity<RestAttributes>.activities
+        let live = all.filter { $0.activityState == .active || $0.activityState == .stale }
+        RestLog.add("表示更新: \(describe(state))／表示\(live.count)件（全\(all.count)件: \(all.map { "\($0.activityState)" }.joined(separator: ",")))")
         let content = ActivityContent(state: state, staleDate: nil)
-        if let activity = Activity<RestAttributes>.activities.first {
-            await activity.update(content)
+        if live.isEmpty {
+            try request(content)
             return
         }
+        for activity in live {
+            await activity.update(content)
+        }
+    }
+
+    /// 古い表示をすべてすぐ消してから、新しく作る
+    private func replaceActivity(_ state: RestAttributes.ContentState) async throws {
+        let all = Activity<RestAttributes>.activities
+        for activity in all {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+        RestLog.add("表示を作り直し: \(describe(state))（古い表示\(all.count)件を消去）")
+        try request(ActivityContent(state: state, staleDate: nil))
+    }
+
+    private func request(_ content: ActivityContent<RestAttributes.ContentState>) throws {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { throw RestError.activitiesDisabled }
-        _ = try Activity.request(attributes: RestAttributes(), content: content)
+        let activity = try Activity.request(attributes: RestAttributes(), content: content)
+        RestLog.add("表示を新規作成: \(activity.id.prefix(8))")
+    }
+
+    private func describe(_ state: RestAttributes.ContentState) -> String {
+        guard let r = state.running else { return state.choosing != nil ? "開始区間の選択" : "メニュー" }
+        let left = Int(r.endDate.timeIntervalSinceNow.rounded())
+        return "\(RestPreset.format(r.segmentSeconds))・\(r.count)本目（残り\(left)秒）"
     }
 }
 
