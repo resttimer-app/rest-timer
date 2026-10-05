@@ -114,7 +114,7 @@ struct RestLiveActivity: Widget {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -157,15 +157,10 @@ struct RestLiveActivity: Widget {
     }
 }
 
-/// メニュー1段階目: プリセットを横幅いっぱいの2列×3段に並べる（閉じるボタンは右上の隅）
+/// メニュー1段階目: プリセットを横幅いっぱいの1列×6段に並べる（閉じるボタンは右上の隅）
+/// ロック画面のライブアクティビティは高さ160ptまでなので、1段あたり約22pt。
 private struct MenuView: View {
     let presets: [RestPreset]
-
-    /// 2個ずつの行に分ける
-    private var rows: [[(Int, RestPreset)]] {
-        let items = Array(presets.enumerated()).map { ($0.offset, $0.element) }
-        return stride(from: 0, to: items.count, by: 2).map { Array(items[$0..<min($0 + 2, items.count)]) }
-    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -174,29 +169,22 @@ private struct MenuView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 6) {
-                            ForEach(row, id: \.0) { index, preset in
-                                PresetButton(number: index + 1, preset: preset)
-                            }
-                            if row.count == 1 {
-                                Color.clear.frame(maxWidth: .infinity)
-                            }
-                        }
+                VStack(spacing: 3) {
+                    ForEach(Array(presets.enumerated()), id: \.offset) { index, preset in
+                        PresetButton(number: index + 1, preset: preset)
                     }
                 }
                 .frame(maxWidth: .infinity)
             }
             Button(intent: StopRestIntent()) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 20, height: 20)
                     .background(Circle().fill(Color.black.opacity(0.55)))
             }
             .buttonStyle(.plain)
-            .offset(x: 6, y: -6)
+            .offset(x: 4, y: -2)
         }
     }
 }
@@ -207,20 +195,20 @@ private struct PresetButton: View {
 
     var body: some View {
         Button(intent: ChoosePresetIntent(number: number)) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Text("\(number)")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
                     .opacity(0.75)
+                    .frame(width: 14)
                 Text(preset.label)
-                    .font(.system(size: preset.segments.count <= 2 ? 19 : 15, weight: .bold, design: .rounded))
-                    .lineLimit(2)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                    .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange))
+            .frame(maxWidth: .infinity, minHeight: 22, maxHeight: 22)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Color.orange))
             .foregroundStyle(.white)
         }
         .buttonStyle(.plain)
