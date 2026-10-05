@@ -151,7 +151,15 @@ struct RestLiveActivity: Widget {
                         .frame(maxWidth: 44)
                 }
             } minimal: {
-                Image(systemName: "timer")
+                // 音楽など他のライブアクティビティと並ぶと、この小さい丸だけになる。ここにも残り時間を出す
+                if let running = context.state.running {
+                    countdown(running)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: 36)
+                } else {
+                    Image(systemName: "timer")
+                }
             }
         }
     }
