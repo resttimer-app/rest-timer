@@ -32,7 +32,14 @@
   - buildNumber は app.json で管理（appVersionSource local）。拡張と本体の番号を揃えるため
 - 未: 実機確認（ボタンが一覧に出るか／メニュー・繰り返し・停止／マナーモード／音楽が止まらないか）
 
-- Swift コードは一度もコンパイルしていない。ビルドで失敗したらログを読んで直すこと。
+- Swift コードはビルドで毎回コンパイルされる。ビルドで失敗したらログを読んで直すこと。
+
+## ビルドの方法（2026-10-05〜）
+- EAS の無料枠（iOS 月15回）は 10月分を使い切った。以後は GitHub Actions の Mac で `eas build --local` → `eas upload` でインストール用リンクを出す（無料）
+- リポジトリ: https://github.com/resttimer-app/rest-timer（公開。組織 resttimer-app、持ち主はユーザーの GitHub アカウント Heastpatsn。販売前に非公開に切り替える予定）
+- 実行: `C:\Users\user\tools\gh\bin\gh.exe workflow run ios-build.yml -R resttimer-app/rest-timer`。完了後、ログの "Upload to EAS" にある expo.dev/.../builds/... がインストール用ページ
+- buildNumber はワークフローが 100 + 実行番号 に設定する（app.json の値は使わない）
+- シークレット EXPO_TOKEN はユーザーが登録済み。鍵の作成・貼り付けは代行しない
 
 ## 環境の制約
 - ユーザーは Windows（Mac なし）。Windows では `npx expo prebuild`（iOS）が動かない。iOS のビルドと検証は EAS のクラウドビルドで行う。
