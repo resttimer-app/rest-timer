@@ -1,0 +1,7 @@
+{
+  "name": "mixtimer-bridge",
+  "version": "1.0.0",
+  "description": "Start/stop the MixTimer engine from the app screen",
+  "main": "index.ts",
+  "private": true
+}

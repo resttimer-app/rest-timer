@@ -286,6 +286,7 @@ final class RestEngine {
     func stop() async {
         RestLog.add("停止")
         stopSound()
+        RestStatus.publish(nil)
         for activity in Activity<RestAttributes>.activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
@@ -356,6 +357,7 @@ final class RestEngine {
         let all = Activity<RestAttributes>.activities
         let live = all.filter { $0.activityState == .active || $0.activityState == .stale }
         RestLog.add("表示更新: \(describe(state))／表示\(live.count)件（全\(all.count)件: \(all.map { "\($0.activityState)" }.joined(separator: ",")))")
+        RestStatus.publish(state.running)
         let content = ActivityContent(state: state, staleDate: state.running?.endDate)
         if live.isEmpty {
             try request(content)
@@ -363,6 +365,10 @@ final class RestEngine {
         }
         for activity in live {
             await activity.update(content)
+            // iOS 側に新しい内容が届いたかを記録で確かめる（届いていれば終了時刻が一致する）
+            let got = activity.content.state.running?.endDate
+            let want = state.running?.endDate
+            RestLog.add("更新の反映: \(got == want ? "OK" : "未反映")（状態: \(activity.activityState)）")
         }
     }
 
@@ -373,6 +379,7 @@ final class RestEngine {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         RestLog.add("表示を作り直し: \(describe(state))（古い表示\(all.count)件を消去）")
+        RestStatus.publish(state.running)
         try request(ActivityContent(state: state, staleDate: state.running?.endDate))
     }
 
@@ -390,6 +397,49 @@ final class RestEngine {
 }
 
 /// ショートカットアプリから実行したときに、理由がそのまま表示される
+/// アプリ画面（JS）から呼ぶ入口。modules/mixtimer-bridge が Objective-C の名前で呼び出す。
+@objc(MTRestBridge)
+final class RestBridge: NSObject {
+    @objc static func start(_ number: NSNumber, startAt: NSNumber) {
+        guard #available(iOS 17.0, *) else { return }
+        Task { @MainActor in
+            do {
+                try await RestEngine.shared.start(presetNumber: number.intValue, startAt: startAt.intValue)
+            } catch {
+                RestLog.add("アプリから開始できない: \(error)")
+            }
+        }
+    }
+
+    @objc static func stop() {
+        guard #available(iOS 17.0, *) else { return }
+        Task { @MainActor in await RestEngine.shared.stop() }
+    }
+}
+
+/// 今のタイマーの状態を、アプリ画面（React Native の Settings）が読めるように UserDefaults の "restStatus" に書く。
+/// 形式: {"running":true,"label":"2分↔3分","segments":[120,180],"index":0,"count":1,"start":秒,"end":秒}（秒は 1970 年からの秒）
+enum RestStatus {
+    static let key = "restStatus"
+
+    static func publish(_ running: RestAttributes.Running?) {
+        var dict: [String: Any] = ["running": running != nil]
+        if let r = running {
+            dict["label"] = r.label
+            dict["segments"] = r.segments
+            dict["index"] = r.index
+            dict["count"] = r.count
+            dict["start"] = r.startDate.timeIntervalSince1970
+            dict["end"] = r.endDate.timeIntervalSince1970
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: dict),
+           let json = String(data: data, encoding: .utf8)
+        {
+            UserDefaults.standard.set(json, forKey: key)
+        }
+    }
+}
+
 /// 動作の記録。アプリの画面（React Native の Settings）で "restLog" を表示する。最新40行だけ残す。
 enum RestLog {
     static let key = "restLog"
