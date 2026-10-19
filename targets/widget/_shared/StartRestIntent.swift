@@ -92,6 +92,8 @@ struct RestAttributes: ActivityAttributes {
 struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "休憩タイマーのメニューを出す"
     static var openAppWhenRun: Bool = false
+    /// ロック画面からロック解除なしで実行できるようにする
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "ページ（0か1）", default: 0)
     var page: Int
@@ -114,6 +116,8 @@ struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
 struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "休憩タイマーのプリセットを選ぶ"
     static var openAppWhenRun: Bool = false
+    /// ロック画面からロック解除なしで実行できるようにする
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "プリセット番号（1〜6）", default: 1)
     var number: Int
@@ -136,6 +140,8 @@ struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "休憩タイマーを開始"
     static var openAppWhenRun: Bool = false
+    /// ロック画面からロック解除なしで実行できるようにする
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "プリセット番号（1〜6）", default: 1)
     var number: Int
@@ -162,6 +168,8 @@ struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 struct StopRestIntent: AudioPlaybackIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "休憩タイマーを停止"
     static var openAppWhenRun: Bool = false
+    /// ロック画面からロック解除なしで実行できるようにする
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     init() {}
 
