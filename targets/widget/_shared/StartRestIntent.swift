@@ -111,9 +111,33 @@ struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
     }
 }
 
+/// メニューの中のボタン（ページ切り替え・戻る）から。音には触らない。
+@available(iOS 17.0, *)
+struct MenuPageIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "MixTimerのメニューのページを切り替える"
+    static var openAppWhenRun: Bool = false
+    /// ロック画面からロック解除なしで実行できるようにする
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+
+    @Parameter(title: "ページ（0か1）", default: 0)
+    var page: Int
+
+    init() {}
+
+    init(page: Int) {
+        self.page = page
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        try await RestEngine.shared.showPage(page)
+        return .result()
+    }
+}
+
 /// メニューの1段階目から: プリセットを選ぶ。区間が2つ以上なら「どこから始めるか」を出し、1つならすぐ始める
 @available(iOS 17.0, *)
-struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
+struct ChoosePresetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "MixTimerのプリセットを選ぶ"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
@@ -137,7 +161,7 @@ struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 
 /// メニューのボタンから: 選んだプリセットで、止めるまで繰り返すタイマーを始める
 @available(iOS 17.0, *)
-struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
+struct StartPresetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "MixTimerを開始"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
@@ -165,7 +189,7 @@ struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 
 /// 停止ボタンから: タイマーを止めて、ロック画面の表示も消す
 @available(iOS 17.0, *)
-struct StopRestIntent: AudioPlaybackIntent, LiveActivityIntent {
+struct StopRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "MixTimerを停止"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
@@ -211,9 +235,36 @@ final class RestEngine {
         }
     }
 
+    /// ロック画面の下のボタン・ウィジェットから。動いているタイマーは止め、メニューを出す。
+    /// このボタンは AudioPlaybackIntent なので、ここで無音の再生を先に始めておく。
+    /// こうしておくと、メニューの中のボタン（ロック解除の要らない LiveActivityIntent）から開始しても音が鳴らせる。
     func showMenu(page: Int = 0) async throws {
         stopSound()
+        do {
+            try startSound()
+        } catch {
+            RestLog.add("音の準備に失敗: \(error)")
+        }
+        armMenuTimeout()
         try await setState(RestAttributes.ContentState(presets: PresetStore.all(), running: nil, page: page))
+    }
+
+    /// メニューの中のページ切り替え・戻る。音はそのまま。
+    func showPage(_ page: Int) async throws {
+        armMenuTimeout()
+        try await setState(RestAttributes.ContentState(presets: PresetStore.all(), running: nil, page: page))
+    }
+
+    /// メニューを出したまま2分間なにも選ばなければ、音の準備をやめて表示も消す（電池のため）
+    private var menuTimeout: Task<Void, Never>?
+    private func armMenuTimeout() {
+        menuTimeout?.cancel()
+        menuTimeout = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 120 * 1_000_000_000)
+            guard !Task.isCancelled, let self, self.loop == nil else { return }
+            RestLog.add("メニューを2分間使わなかったので閉じる")
+            await self.stop()
+        }
     }
 
     func choose(presetNumber: Int) async throws {
@@ -231,8 +282,11 @@ final class RestEngine {
         guard presets.indices.contains(presetNumber - 1) else { throw RestError.noPreset }
         let preset = presets[presetNumber - 1]
 
-        stopSound()
-        try startSound()
+        menuTimeout?.cancel()
+        stopLoop()
+        if keepAlive?.isPlaying != true {
+            try startSound()
+        }
         RestLog.add("開始: \(preset.label)（\(startAt)番目の区間から）")
 
         let first = min(max(startAt - 1, 0), preset.segments.count - 1)
@@ -338,14 +392,20 @@ final class RestEngine {
         }
     }
 
-    private func stopSound() {
+    /// タイマーの進行と予約済みのビープだけ止める（無音の再生は続ける）
+    private func stopLoop() {
         loop?.cancel()
         loop = nil
-        keepAlive?.stop()
         scheduled.forEach { $0.stop() }
-        keepAlive = nil
         scheduled = []
         pendingBeep = nil
+    }
+
+    private func stopSound() {
+        menuTimeout?.cancel()
+        stopLoop()
+        keepAlive?.stop()
+        keepAlive = nil
         // ほかのアプリ（音楽）に、こちらの再生が終わったことを伝える
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
