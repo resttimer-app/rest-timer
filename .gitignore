@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# App Store screenshots (raw photos may contain personal info)
+/store/raw/
+/store/screenshots/
