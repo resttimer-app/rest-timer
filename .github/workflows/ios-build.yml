@@ -7,8 +7,8 @@ on:
 
 jobs:
   build:
-    # macos-26 は混んでいて受け付けられないことがあるので macos-15 を使い、入っている最新の Xcode を選ぶ
-    runs-on: macos-15
+    # Expo SDK 57 は Xcode 26.4 以上が必要（macos-15 の Xcode は 26.3 まで）。入っている最新の Xcode を選ぶ
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

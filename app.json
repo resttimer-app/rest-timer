@@ -41,7 +41,8 @@
             "./assets/sounds/rest.wav"
           ]
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
