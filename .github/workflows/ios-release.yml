@@ -1,0 +1,61 @@
+# GitHub の Mac で App Store 用（production）ビルドを作り、App Store Connect（TestFlight）へ送る。
+# 必要なシークレット:
+#   EXPO_TOKEN          … Expo のアクセストークン
+#   ASC_API_KEY_P8      … App Store Connect API キー（.p8 ファイルの中身そのまま）
+#   ASC_KEY_ID          … キー ID
+#   ASC_ISSUER_ID       … 発行者 ID
+name: iOS release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # EAS が Apple にログインする代わりに API キーを使う（証明書・プロファイルの作成と提出）
+      EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/asc_api_key.p8
+      EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: 4XBBNH5J4W
+      EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Write App Store Connect API key
+        run: printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$EXPO_ASC_API_KEY_PATH"
+
+      # App Store に上げるビルド番号は毎回上げる（preview とは別の番号帯）
+      - name: Set build number
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            app.expo.ios.buildNumber = String(1000 + Number(process.env.GITHUB_RUN_NUMBER));
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2) + "\n");
+            console.log("buildNumber", app.expo.ios.buildNumber);
+          '
+
+      - name: Build
+        run: npx eas-cli@latest build --local --platform ios --profile production --non-interactive --output ./MixTimer.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MixTimer-appstore-ipa
+          path: MixTimer.ipa
+
+      - name: Submit to App Store Connect
+        run: npx eas-cli@latest submit --platform ios --profile production --path ./MixTimer.ipa --non-interactive
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$EXPO_ASC_API_KEY_PATH"

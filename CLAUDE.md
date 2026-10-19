@@ -41,6 +41,13 @@
 - buildNumber はワークフローが 100 + 実行番号 に設定する（app.json の値は使わない）
 - シークレット EXPO_TOKEN はユーザーが登録済み。鍵の作成・貼り付けは代行しない
 
+## App Store 準備（2026-10-19〜）
+- 名前 MixTimer、サブタイトル「音楽を止めずに鳴る、くり返しタイマー」。アイコンは assets/icon.svg（ヘッドレス Chrome で 1024px の assets/icon.png に描き出す）。バンドル ID は jp.resttimer.app のまま（利用者には見えない）
+- 掲載文の下書き: store/metadata-ja.md（審査メモ＝英語も同じファイル）
+- サポート/プライバシーポリシー: docs/ を GitHub Pages で公開（https://resttimer-app.github.io/rest-timer/）。無料プランの Pages は公開リポジトリでしか使えないので、リポジトリを非公開にするときは別の公開リポジトリへ移す
+- 提出用ワークフロー: .github/workflows/ios-release.yml（production ビルド → eas submit）。必要なシークレット ASC_API_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID はユーザーが作成・登録する。eas.json の submit.production.ios.ascAppId は App Store Connect でアプリを作ってから入れる
+- 審査の懸念: 待ち時間中に音量0の音をループ再生してバックグラウンドを保っている（Guideline 2.5.4 で却下されうる）。審査メモで用途を説明済み
+
 ## 環境の制約
 - ユーザーは Windows（Mac なし）。Windows では `npx expo prebuild`（iOS）が動かない。iOS のビルドと検証は EAS のクラウドビルドで行う。
 - 実機確認はユーザーの iPhone。Expo Go では動かない（ウィジェットはネイティブ拡張）。
