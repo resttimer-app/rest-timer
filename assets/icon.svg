@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- MixTimer アイコン（案B）。オレンジ地に、くり返しを表すループ矢印と時計の針。角丸は iOS が付ける -->
+  <rect width="1024" height="1024" fill="#FF8C47"/>
+  <path d="M 512 240 A 300 300 0 1 1 230 437" fill="none" stroke="#FFFFFF" stroke-width="76" stroke-linecap="round"/>
+  <polygon points="262,352 150,410 318,470" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="18" stroke-linejoin="round"/>
+  <line x1="512" y1="540" x2="512" y2="380" stroke="#FFFFFF" stroke-width="60" stroke-linecap="round"/>
+  <line x1="512" y1="540" x2="625" y2="605" stroke="#FFFFFF" stroke-width="60" stroke-linecap="round"/>
+</svg>
