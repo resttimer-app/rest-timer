@@ -363,6 +363,19 @@ final class RestEngine {
             try request(content)
             return
         }
+        // iOS の既知の不具合: 音声カテゴリが .playback のままバックグラウンドから更新すると、
+        // update は成功しても表示に反映されない（Apple Developer Forums 716458 / 724483）。
+        // 更新の間だけ .ambient に切り替え、終わったら .playback に戻す（マナーモードでも鳴るのは .playback のため）。
+        let session = AVAudioSession.sharedInstance()
+        let switchCategory = session.category == .playback
+        if switchCategory {
+            try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        }
+        defer {
+            if switchCategory {
+                try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            }
+        }
         for activity in live {
             await activity.update(content)
             // iOS 側に新しい内容が届いたかを記録で確かめる（届いていれば終了時刻が一致する）
