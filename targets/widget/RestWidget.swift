@@ -113,13 +113,16 @@ struct RestLiveActivity: Widget {
                     MenuView(presets: context.state.presets, page: context.state.page)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .activityBackgroundTint(Theme.background)
+            .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Image(systemName: "timer")
-                        .font(.title2)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Theme.accentColor)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if let running = shown(context) {
@@ -134,9 +137,9 @@ struct RestLiveActivity: Widget {
                             SegmentsLine(running: running)
                             Spacer()
                             Button(intent: StopRestIntent()) {
-                                Text("停止")
+                                roundIcon("stop.fill", size: 34, tint: Theme.stop)
                             }
-                            .tint(.red)
+                            .buttonStyle(.plain)
                         }
                     } else {
                         Text("ロック画面で時間を選んでください")
@@ -145,6 +148,7 @@ struct RestLiveActivity: Widget {
                 }
             } compactLeading: {
                 Image(systemName: "timer")
+                    .foregroundStyle(Theme.accentColor)
             } compactTrailing: {
                 if let running = shown(context) {
                     countdown(running)
@@ -165,7 +169,57 @@ struct RestLiveActivity: Widget {
     }
 }
 
-/// メニュー1段階目: プリセットを横幅いっぱいに3段ずつ並べ、2ページを ◀ ▶ で切り替える（1〜3番 / 4〜6番）。
+// MARK: - 見た目の共通部品
+
+/// 色と形。差し色はオレンジのグラデーション1色だけ、あとは白とグレー。
+private enum Theme {
+    static let background = Color(red: 0.06, green: 0.06, blue: 0.08).opacity(0.82)
+    static let tile = Color.white.opacity(0.08)
+    static let stroke = Color.white.opacity(0.14)
+    static let secondary = Color.white.opacity(0.55)
+    static let accent = LinearGradient(
+        colors: [Color(red: 1.0, green: 0.66, blue: 0.24), Color(red: 1.0, green: 0.42, blue: 0.32)],
+        startPoint: .leading, endPoint: .trailing
+    )
+    static let accentColor = Color(red: 1.0, green: 0.55, blue: 0.28)
+    static let stop = Color(red: 1.0, green: 0.27, blue: 0.27).opacity(0.9)
+}
+
+/// 濃いグレーのタイル（細い縁取り付き）
+private struct Tile: ViewModifier {
+    var radius: CGFloat = 12
+    func body(content: Content) -> some View {
+        content
+            .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Theme.tile))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Theme.stroke, lineWidth: 0.5))
+    }
+}
+
+/// 番号の丸バッジ
+private struct NumberBadge: View {
+    let number: Int
+    var body: some View {
+        Text("\(number)")
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundStyle(.black)
+            .frame(width: 22, height: 22)
+            .background(Circle().fill(Theme.accent))
+    }
+}
+
+/// 丸いガラス風ボタンの中身
+private func roundIcon(_ name: String, size: CGFloat, tint: Color = Color.white.opacity(0.14)) -> some View {
+    Image(systemName: name)
+        .font(.system(size: size * 0.34, weight: .semibold))
+        .foregroundStyle(.white)
+        .frame(width: size, height: size)
+        .background(Circle().fill(tint))
+        .overlay(Circle().strokeBorder(Theme.stroke, lineWidth: 0.5))
+}
+
+// MARK: - メニュー1段階目
+
+/// プリセットを横幅いっぱいに3段ずつ並べ、2ページを ◀ ▶ で切り替える（1〜3番 / 4〜6番）。
 /// ライブアクティビティはスワイプを受け付けないので、ボタンで切り替えて、横にスライドする動きを付けている。
 /// 高さは160ptまでなので、3段にして1段を約44ptにしている。
 private struct MenuView: View {
@@ -176,13 +230,14 @@ private struct MenuView: View {
     private var current: Int { min(max(page, 0), max(pageCount - 1, 0)) }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if presets.isEmpty {
                 Text("アプリでプリセットを設定してください")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 5) {
+                VStack(spacing: 6) {
                     ForEach(current * 3..<min(current * 3 + 3, presets.count), id: \.self) { index in
                         PresetButton(number: index + 1, preset: presets[index])
                     }
@@ -192,30 +247,22 @@ private struct MenuView: View {
                 .transition(.push(from: current == 0 ? .leading : .trailing))
             }
             // 右端: 閉じる / ページ切り替え
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 Button(intent: StopRestIntent()) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 60, height: 60)
-                        .background(Circle().fill(Color.black.opacity(0.55)))
+                    roundIcon("xmark", size: 60)
                 }
                 .buttonStyle(.plain)
                 Spacer(minLength: 0)
                 if pageCount > 1 {
                     Button(intent: ShowRestMenuIntent(page: current == 0 ? 1 : 0)) {
-                        Image(systemName: current == 0 ? "chevron.right" : "chevron.left")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 60, height: 52)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.2)))
+                        roundIcon(current == 0 ? "chevron.right" : "chevron.left", size: 48)
                     }
                     .buttonStyle(.plain)
                     HStack(spacing: 5) {
                         ForEach(0..<pageCount, id: \.self) { i in
-                            Circle()
-                                .fill(i == current ? Color.white : Color.white.opacity(0.35))
-                                .frame(width: 6, height: 6)
+                            Capsule()
+                                .fill(i == current ? Color.white : Color.white.opacity(0.3))
+                                .frame(width: i == current ? 12 : 5, height: 5)
                         }
                     }
                 }
@@ -231,59 +278,68 @@ private struct PresetButton: View {
 
     var body: some View {
         Button(intent: ChoosePresetIntent(number: number)) {
-            HStack(spacing: 10) {
-                Text("\(number)")
-                    .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    .opacity(0.75)
-                    .frame(width: 16)
+            HStack(spacing: 12) {
+                NumberBadge(number: number)
                 Text(preset.label)
-                    .font(.system(size: 21, weight: .bold, design: .rounded))
+                    .font(.system(size: 19, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.secondary)
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 11).fill(Color.orange))
-            .foregroundStyle(.white)
+            .modifier(Tile())
         }
         .buttonStyle(.plain)
     }
 }
 
-/// メニュー2段階目: どの区間から始めるかを、大きなボタンで横一列に並べる
+// MARK: - メニュー2段階目
+
+/// どの区間から始めるかを、大きなタイルで横一列に並べる
 private struct StartPointView: View {
     let number: Int
     let preset: RestPreset
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("\(number)  \(preset.label)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Text("どこから始める？")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                NumberBadge(number: number)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(preset.label)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text("どこから始める？")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.secondary)
+                }
                 Spacer(minLength: 0)
                 Button(intent: ShowRestMenuIntent()) {
-                    Label("戻る", systemImage: "chevron.left")
-                        .font(.footnote.bold())
+                    roundIcon("chevron.left", size: 36)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
             }
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 ForEach(Array(preset.segments.enumerated()), id: \.offset) { i, seconds in
                     Button(intent: StartPresetIntent(number: number, startAt: i + 1)) {
-                        Text(RestPreset.format(seconds))
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                            .frame(maxWidth: .infinity, minHeight: 60, maxHeight: 60)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange))
-                            .foregroundStyle(.white)
+                        VStack(spacing: 3) {
+                            Text(RestPreset.format(seconds))
+                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Theme.accentColor)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 64, maxHeight: 64)
+                        .modifier(Tile(radius: 14))
                     }
                     .buttonStyle(.plain)
                 }
@@ -291,6 +347,8 @@ private struct StartPointView: View {
         }
     }
 }
+
+// MARK: - カウント中
 
 /// 区間の並び。今の区間だけ色を付ける（2分 → [3分] → 5分）
 private struct SegmentsLine: View {
@@ -300,24 +358,30 @@ private struct SegmentsLine: View {
         HStack(spacing: 4) {
             ForEach(Array(running.segments.enumerated()), id: \.offset) { i, seconds in
                 if i > 0 {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(Color.white.opacity(0.3))
                 }
                 Text(RestPreset.format(seconds))
-                    .font(.system(size: 13, weight: i == running.index ? .bold : .regular, design: .rounded))
+                    .font(.system(size: 12, weight: i == running.index ? .bold : .medium, design: .rounded))
                     .lineLimit(1)
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(i == running.index ? Color.orange : Color.clear))
-                    .foregroundStyle(i == running.index ? Color.white : Color.secondary)
+                    .background {
+                        if i == running.index {
+                            Capsule().fill(Theme.accent)
+                        } else {
+                            Capsule().strokeBorder(Theme.stroke, lineWidth: 0.5)
+                        }
+                    }
+                    .foregroundStyle(i == running.index ? Color.black : Theme.secondary)
             }
         }
         .minimumScaleFactor(0.6)
     }
 }
 
-/// カウント中: 区間の並び（今の区間に色）、残り時間、次の区間、停止ボタン
+/// 残り時間（大きく）、区間の並び、何本目・次、進行バー、停止ボタン
 private struct RunningView: View {
     let running: RestAttributes.Running
 
@@ -326,40 +390,36 @@ private struct RunningView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             SegmentsLine(running: running)
-            // 残り時間のバー（これも iPhone が自動で動かす）
+            HStack(alignment: .center, spacing: 14) {
+                countdown(running)
+                    .font(.system(size: 52, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(running.count)本目")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("次 \(RestPreset.format(next))")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Theme.secondary)
+                }
+                Spacer(minLength: 0)
+                Button(intent: StopRestIntent()) {
+                    roundIcon("stop.fill", size: 52, tint: Theme.stop)
+                }
+                .buttonStyle(.plain)
+            }
+            // 残り時間の進行バー（iPhone が自動で動かす）
             ProgressView(timerInterval: running.startDate...running.endDate, countsDown: true) {
                 EmptyView()
             } currentValueLabel: {
                 EmptyView()
             }
-            .tint(.orange)
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("残り")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    countdown(running)
-                        .font(.system(size: 46, weight: .bold, design: .rounded))
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(running.count)本目")
-                        .font(.caption)
-                    Text("次: \(RestPreset.format(next))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                Button(intent: StopRestIntent()) {
-                    Text("停止")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(width: 64, height: 44)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.red))
-                }
-                .buttonStyle(.plain)
-            }
+            .progressViewStyle(.linear)
+            .tint(Theme.accentColor)
         }
     }
 }
