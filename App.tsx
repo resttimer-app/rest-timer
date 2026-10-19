@@ -87,7 +87,7 @@ export default function App() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>休憩タイマー</Text>
+        <Text style={styles.title}>MixTimer</Text>
         <Text style={styles.hint}>ロック画面のボタンを長押し → プリセットを選ぶだけ</Text>
 
         {presets.map((segs, row) => (

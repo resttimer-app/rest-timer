@@ -90,7 +90,7 @@ struct RestAttributes: ActivityAttributes {
 /// ロック画面のボタン・ウィジェットから: プリセットのメニューをロック画面に出す（動いているタイマーは止める）
 @available(iOS 17.0, *)
 struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
-    static var title: LocalizedStringResource = "休憩タイマーのメニューを出す"
+    static var title: LocalizedStringResource = "MixTimerのメニューを出す"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -114,7 +114,7 @@ struct ShowRestMenuIntent: AudioPlaybackIntent, LiveActivityIntent {
 /// メニューの1段階目から: プリセットを選ぶ。区間が2つ以上なら「どこから始めるか」を出し、1つならすぐ始める
 @available(iOS 17.0, *)
 struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
-    static var title: LocalizedStringResource = "休憩タイマーのプリセットを選ぶ"
+    static var title: LocalizedStringResource = "MixTimerのプリセットを選ぶ"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -138,7 +138,7 @@ struct ChoosePresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 /// メニューのボタンから: 選んだプリセットで、止めるまで繰り返すタイマーを始める
 @available(iOS 17.0, *)
 struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
-    static var title: LocalizedStringResource = "休憩タイマーを開始"
+    static var title: LocalizedStringResource = "MixTimerを開始"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -166,7 +166,7 @@ struct StartPresetIntent: AudioPlaybackIntent, LiveActivityIntent {
 /// 停止ボタンから: タイマーを止めて、ロック画面の表示も消す
 @available(iOS 17.0, *)
 struct StopRestIntent: AudioPlaybackIntent, LiveActivityIntent {
-    static var title: LocalizedStringResource = "休憩タイマーを停止"
+    static var title: LocalizedStringResource = "MixTimerを停止"
     static var openAppWhenRun: Bool = false
     /// ロック画面からロック解除なしで実行できるようにする
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed

@@ -48,7 +48,7 @@ struct RestWidgetView: View {
                 Image(systemName: "timer")
                     .font(.system(size: 22, weight: .semibold))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("休憩タイマー")
+                    Text("MixTimer")
                         .font(.headline)
                     Text("タップで時間を選ぶ")
                         .font(.caption2)
@@ -59,7 +59,7 @@ struct RestWidgetView: View {
             VStack(spacing: 6) {
                 Image(systemName: "timer")
                     .font(.system(size: 32, weight: .semibold))
-                Text("休憩タイマー")
+                Text("MixTimer")
                     .font(.headline)
                 Text("タップで時間を選ぶ")
                     .font(.caption)
@@ -77,7 +77,7 @@ struct RestWidget: Widget {
             RestWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("休憩タイマー")
+        .configurationDisplayName("MixTimer")
         .description("タップすると、ロック画面に時間のメニューが出ます。")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
     }
@@ -89,10 +89,10 @@ struct RestControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "RestControl") {
             ControlWidgetButton(action: ShowRestMenuIntent()) {
-                Label("休憩タイマー", systemImage: "timer")
+                Label("MixTimer", systemImage: "timer")
             }
         }
-        .displayName("休憩タイマー")
+        .displayName("MixTimer")
         .description("押すと、ロック画面に時間のメニューが出ます。")
     }
 }
