@@ -43,3 +43,6 @@ yarn-error.*
 # App Store screenshots (raw photos may contain personal info)
 /store/raw/
 /store/screenshots/
+
+# built app files
+*.ipa
