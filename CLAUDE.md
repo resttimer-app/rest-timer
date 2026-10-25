@@ -46,6 +46,7 @@
 - 掲載文の下書き: store/metadata-ja.md（審査メモ＝英語も同じファイル）
 - サポート/プライバシーポリシー: docs/ を GitHub Pages で公開（https://resttimer-app.github.io/rest-timer/）。無料プランの Pages は公開リポジトリでしか使えないので、リポジトリを非公開にするときは別の公開リポジトリへ移す
 - 提出用ワークフロー: .github/workflows/ios-release.yml（production ビルド → eas submit）。必要なシークレット ASC_API_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID はユーザーが作成・登録する。App Store Connect のアプリ ID（ascAppId）は 6824399868（eas.json に設定済み）
+- 提出用の App Store Connect API キーは EAS に割り当て済み（2026-10-26、[Expo] EAS Submit, Key ID TPGYN45D8N）。ios-release.yml で build → submit まで自動で通る。macos-26 ランナーは混むことがあり、待ちが長いと "not acquired" で失敗するので流し直す
 - 審査の懸念: 待ち時間中に音量0の音をループ再生してバックグラウンドを保っている（Guideline 2.5.4 で却下されうる）。審査メモで用途を説明済み
 
 ## 環境の制約
